@@ -7,70 +7,86 @@
 
 import pyxel
 
+# シーン状態（タイトル/プレイ中/ゲームオーバー）を表す定数
 SCENE_TITLE = 0
 SCENE_PLAY = 1
 SCENE_GAMEOVER = 2
 
+# 背景の星の描画設定
 NUM_STARS = 100
 STAR_COLOR_HIGH = 12
 STAR_COLOR_LOW = 5
 
+# プレイヤーの当たり判定サイズと移動速度
 PLAYER_WIDTH = 8
 PLAYER_HEIGHT = 8
 PLAYER_SPEED = 2
 
+# 弾の見た目と移動設定
 BULLET_WIDTH = 2
 BULLET_HEIGHT = 8
 BULLET_COLOR = 11
 BULLET_SPEED = 4
 
+# 敵キャラクターの当たり判定サイズと移動速度
 ENEMY_WIDTH = 8
 ENEMY_HEIGHT = 8
 ENEMY_SPEED = 1.5
 
+# 撃破時のブラスト（円形エフェクト）の設定
 BLAST_START_RADIUS = 1
 BLAST_END_RADIUS = 8
 BLAST_COLOR_IN = 7
 BLAST_COLOR_OUT = 10
 
+# エンティティ（動的オブジェクト）を種類ごとに管理するリスト
 enemies = []
 bullets = []
 blasts = []
 items = []
 explosions = []
+# 全エンティティ群をタプル化し、更新/描画/掃除を一括で処理する
 ENTITY_GROUPS = (enemies, bullets, blasts, items, explosions)
 
 
 def update_entities(entities):
+    # 各エンティティの1フレーム分の更新を実行
     for entity in entities:
         entity.update()
 
 
 def draw_entities(entities):
+    # 各エンティティの描画処理を実行
     for entity in entities:
         entity.draw()
 
 
 def cleanup_entities(entities):
+    # is_alive=False の要素を取り除いてメモリと描画対象を整理
     entities[:] = [e for e in entities if e.is_alive]
 
 
 def update_all_entities():
+    # 全エンティティ群をまとめて更新（エンティティ管理システムの中核）
     for entities in ENTITY_GROUPS:
         update_entities(entities)
 
 
 def cleanup_all_entities():
+    # 全エンティティ群をまとめて掃除（死亡エンティティの除去）
     for entities in ENTITY_GROUPS:
         cleanup_entities(entities)
 
 
 def clear_all_entities():
+    # シーン切り替え時などに全エンティティを完全初期化
     for entities in ENTITY_GROUPS:
         entities.clear()
 
 
 def is_colliding_rect(a, b):
+    # AABB（軸平行矩形）による衝突判定
+    # 2つの矩形が x/y 両軸で重なっているとき True
     return (
         a.x + a.w > b.x
         and b.x + b.w > a.x
@@ -80,6 +96,7 @@ def is_colliding_rect(a, b):
 
 
 class Background:
+    # 背景スクロール（星空）を管理するクラス
     def __init__(self):
         self.stars = [
             (
@@ -103,6 +120,7 @@ class Background:
 
 
 class Player:
+    # プレイヤー本体（移動、射撃、ボム使用）を管理するクラス
     def __init__(self, x, y, parent):
         self.x = x
         self.y = y
@@ -113,6 +131,7 @@ class Player:
         self.is_alive = True
 
     def update(self):
+        # キー入力に応じて移動
         if pyxel.btn(pyxel.KEY_A) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_DPAD_LEFT):
             self.x -= PLAYER_SPEED
         if pyxel.btn(pyxel.KEY_D) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_DPAD_RIGHT):
@@ -125,12 +144,14 @@ class Player:
         self.x = pyxel.clamp(self.x, 0, GAME_WIDTH - self.w)
         self.y = pyxel.clamp(self.y, 0, pyxel.height - self.h)
 
+        # 発射入力で弾を生成
         if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_A):
             Bullet(
                 self.x + (PLAYER_WIDTH - BULLET_WIDTH) / 2, self.y - BULLET_HEIGHT / 2
             )
             pyxel.play(3, 0)
 
+        # ボム所持中に R キーで全敵を一掃
         if pyxel.btnp(pyxel.KEY_R) and self.item:
             # Bomb effect: clear all enemies
             for enemy in enemies:
@@ -143,6 +164,7 @@ class Player:
 
 
 class Bullet:
+    # プレイヤーの弾を表すクラス
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -161,6 +183,7 @@ class Bullet:
 
 
 class Enemy:
+    # 左右に揺れながら下降する敵を表すクラス
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -189,6 +212,7 @@ class Enemy:
 
 
 class Blast:
+    # 敵撃破時に表示する円形ブラストエフェクト
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -207,6 +231,7 @@ class Blast:
 
 
 class Item:
+    # 取得するとボムを使えるアイテム
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -228,6 +253,7 @@ class Item:
 
 
 class Explosion:
+    # 画面演出用の爆発エフェクト
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -250,10 +276,12 @@ class Explosion:
 
 GAME_WIDTH = 120
 UI_WIDTH = 40
+# ハイスコア保存先ファイル
 HIGH_SCORE_FILE = "highscore.txt"
 
 
 class App:
+    # ゲーム全体（初期化、シーン管理、更新、描画）を統括するクラス
     def __init__(self):
         pyxel.init(GAME_WIDTH + UI_WIDTH, 160, title="Pyxel Shooter")
 
@@ -272,6 +300,7 @@ class App:
         pyxel.run(self.update, self.draw)
 
     def load_high_score(self):
+        # 起動時にハイスコアを読み込む（失敗時は 0）
         try:
             with open(HIGH_SCORE_FILE, "r") as f:
                 return int(f.read())
@@ -279,6 +308,7 @@ class App:
             return 0
 
     def save_high_score(self):
+        # ハイスコア更新時にファイルへ保存
         try:
             with open(HIGH_SCORE_FILE, "w") as f:
                 f.write(str(self.high_score))
@@ -359,6 +389,7 @@ class App:
         pyxel.musics[1].set([5], [6], [7])
 
     def update(self):
+        # 現在のシーンに応じて更新処理を分岐
         if pyxel.btn(pyxel.KEY_Q):
             pyxel.quit()
 
@@ -372,11 +403,13 @@ class App:
             self.update_gameover_scene()
 
     def update_title_scene(self):
+        # タイトル画面: Enter/Start でプレイ開始
         if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START):
             self.scene = SCENE_PLAY
             pyxel.playm(1, loop=True)
 
     def enter_gameover_scene(self):
+        # ゲームオーバー遷移: BGM停止、SE再生、ハイスコア更新
         pyxel.stop()
         pyxel.play(3, 1)
         if self.score > self.high_score:
@@ -385,6 +418,7 @@ class App:
         self.scene = SCENE_GAMEOVER
 
     def reset_play_state(self):
+        # リトライ時のプレイ状態初期化
         self.scene = SCENE_PLAY
         self.player.x = GAME_WIDTH / 2
         self.player.y = pyxel.height - 20
@@ -395,12 +429,14 @@ class App:
         pyxel.playm(1, loop=True)
 
     def update_play_scene(self):
+        # 一定間隔で敵とアイテムをスポーン
         if pyxel.frame_count % 6 == 0:
             Enemy(pyxel.rndi(0, GAME_WIDTH - ENEMY_WIDTH), 0)
 
         if pyxel.frame_count % 120 == 0:
             Item(pyxel.rndi(0, GAME_WIDTH - 8), 0)
 
+        # 衝突判定1: 敵と弾が重なったら双方を消し、スコア加算
         for enemy in enemies:
             for bullet in bullets:
                 if is_colliding_rect(enemy, bullet):
@@ -410,11 +446,13 @@ class App:
                     pyxel.play(2, 1, resume=True)
                     self.score += 10
 
+        # 衝突判定2: プレイヤーとアイテムが重なったらボム取得
         for item in items:
             if is_colliding_rect(self.player, item):
                 self.player.item = "bomb"
                 item.is_alive = False
 
+        # 衝突判定3: プレイヤーと敵が重なったらゲームオーバー
         for enemy in enemies:
             if is_colliding_rect(self.player, enemy):
                 enemy.is_alive = False
@@ -424,16 +462,19 @@ class App:
                 )
                 self.enter_gameover_scene()
 
+        # 生存ボーナス（1秒ごと）でスコア加算
         self.play_time += 1
         if self.play_time % 60 == 0:
             self.score += 5
 
         self.player.update()
 
+        # 全エンティティを更新して不要要素を削除
         update_all_entities()
         cleanup_all_entities()
 
     def update_gameover_scene(self):
+        # ゲームオーバー中も演出エンティティのみ更新
         update_all_entities()
         cleanup_all_entities()
 
@@ -441,6 +482,7 @@ class App:
             self.reset_play_state()
 
     def draw(self):
+        # 共通背景を描画後、シーン別描画へ分岐
         pyxel.cls(0)
         self.background.draw()
 
